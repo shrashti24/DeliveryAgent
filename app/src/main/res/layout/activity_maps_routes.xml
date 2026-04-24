@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:fillViewport="true"
+    android:layout_marginTop="25dp"
+    tools:context=".MapsRoutesActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="24dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/arrow_left" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:fontFamily="@font/yeonsung_regular"
+                android:text="Maps And Routes"
+                android:textColor="@color/black"
+                android:textSize="28sp" />
+        </LinearLayout>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="230dp"
+            android:layout_marginTop="18dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="4dp">
+
+            <fragment
+                android:id="@+id/map_route"
+                android:name="com.google.android.gms.maps.SupportMapFragment"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/lato_bold"
+                    android:text="Trip Summary"
+                    android:textColor="@color/black"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/lato_regular"
+                    android:text="Pickup: Desi Bite Kitchen"
+                    android:textColor="#444444" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/lato_regular"
+                    android:text="Drop: Hazratganj, Lucknow"
+                    android:textColor="#444444" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/lato_regular"
+                    android:text="Distance: 6.2 km"
+                    android:textColor="#444444" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/lato_regular"
+                    android:text="Estimated time: 18 mins"
+                    android:textColor="#444444" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/lato_bold"
+                    android:text="Navigation Actions"
+                    android:textColor="@color/black"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/btnOpenMaps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/greenbuttongradient"
+                    android:fontFamily="@font/lato_bold"
+                    android:gravity="center"
+                    android:padding="13dp"
+                    android:text="Open In Google Maps"
+                    android:textColor="@color/white" />
+
+                <TextView
+                    android:id="@+id/btnShareLiveLocation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/delivery_status_chip"
+                    android:fontFamily="@font/lato_bold"
+                    android:gravity="center"
+                    android:padding="12dp"
+                    android:text="Share Live Location"
+                    android:textColor="@color/green"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/edittext_bg"
+                    android:fontFamily="@font/lato_regular"
+                    android:padding="12dp"
+                    android:text="Suggested route: Follow Hazratganj Main Road for the fastest route."
+                    android:textColor="#555555" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+    </LinearLayout>
+</ScrollView>
