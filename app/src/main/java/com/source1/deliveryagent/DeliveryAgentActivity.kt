@@ -150,10 +150,45 @@ class DeliveryAgentActivity : AppCompatActivity() {
         }
         binding.mapRoute.setOnClickListener {
 
-            startActivity(Intent(this, MapsRoutesActivity::class.java))
+            val userId = auth.currentUser!!.uid
+
+            database.child("Orders").get().addOnSuccessListener { snapshot ->
+
+                for (orderSnap in snapshot.children) {
+
+                    val assignedTo = orderSnap.child("assignedTo").value.toString()
+
+                    if (assignedTo == userId) {
+
+                        val orderId = orderSnap.key
+
+                        val intent = Intent(this, MapsRoutesActivity::class.java)
+                        intent.putExtra("orderId", orderId)   // 🔥 important
+                        startActivity(intent)
+                        return@addOnSuccessListener
+                    }
+                }
+            }
         }
         binding.payment.setOnClickListener {
-            startActivity(Intent(this, CodPaymentActivity::class.java))
+
+            val userId = auth.currentUser!!.uid
+
+            database.child("DeliveryBoys").child(userId).child("currentOrder")
+                .get().addOnSuccessListener {
+
+                    val orderId = it.value?.toString()
+
+                    if (!orderId.isNullOrEmpty()) {
+
+                        val intent = Intent(this, CodPaymentActivity::class.java)
+                        intent.putExtra("orderId", orderId)
+                        startActivity(intent)
+
+                    } else {
+                        Toast.makeText(this, "No active order", Toast.LENGTH_SHORT).show()
+                    }
+                }
         }
         binding.customercallBtn.setOnClickListener {
 

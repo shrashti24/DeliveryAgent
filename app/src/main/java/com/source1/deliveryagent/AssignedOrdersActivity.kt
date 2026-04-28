@@ -1,4 +1,5 @@
 package com.source1.deliveryagent
+
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -11,7 +12,7 @@ import com.source1.deliveryagent.databinding.ActivityAssignedOrdersBinding
 import com.source1.deliveryagent.model.OrderModel
 
 
-class AssignedOrdersActivity : AppCompatActivity() , AssignedOrderAdapter.OnOrderAction{
+class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrderAction {
 
     private lateinit var binding: ActivityAssignedOrdersBinding
     private lateinit var list: ArrayList<OrderModel>
@@ -37,7 +38,9 @@ class AssignedOrdersActivity : AppCompatActivity() , AssignedOrderAdapter.OnOrde
 
         loadOrders()
         loadDashboardCounts()
+
     }
+
     private fun loadDashboardCounts() {
 
         val userId = FirebaseAuth.getInstance().currentUser!!.uid
@@ -52,7 +55,7 @@ class AssignedOrdersActivity : AppCompatActivity() , AssignedOrderAdapter.OnOrde
 
                     var pending = 0
                     var picked = 0
-                    var earnings=0
+
                     var inTransit = 0
                     var delivered = 0
 
@@ -64,7 +67,7 @@ class AssignedOrdersActivity : AppCompatActivity() , AssignedOrderAdapter.OnOrde
 
                         when (order?.status) {
 
-                            "assigned" -> pending++
+                            "Accepted" -> pending++
 
                             "Picked Up" -> picked++
 
@@ -73,10 +76,7 @@ class AssignedOrdersActivity : AppCompatActivity() , AssignedOrderAdapter.OnOrde
                             "Delivered" -> {
                                 delivered++
 
-                                val price = order?.totalPrice
-                                    ?.replace("₹", "")
-                                    ?.toIntOrNull() ?: 0
-earnings += price
+
                             }
                         }
                     }
@@ -92,6 +92,7 @@ earnings += price
                 override fun onCancelled(error: DatabaseError) {}
             })
     }
+
     private fun loadOrders() {
         val userId = FirebaseAuth.getInstance().currentUser!!.uid
 
@@ -118,14 +119,17 @@ earnings += price
 
                     // 🔥 DEBUG
                     if (list.isEmpty()) {
-                        Toast.makeText(this@AssignedOrdersActivity,
-                            "No Orders Found 😢", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@AssignedOrdersActivity,
+                            "No Orders Found 😢", Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {}
             })
     }
+
     private fun showRejectDialog(orderId: String, position: Int) {
 
         android.app.AlertDialog.Builder(this)
@@ -137,6 +141,7 @@ earnings += price
             .setNegativeButton("No", null)
             .show()
     }
+
     private fun rejectOrder(orderId: String, position: Int) {
 
         val db = FirebaseDatabase.getInstance().reference
@@ -150,11 +155,7 @@ earnings += price
         db.child("Orders").child(orderId).updateChildren(updates)
 
         // 🔥 SYNC
-        db.child("Order Details").child(orderId).child("status")
-            .setValue("Rejected")
 
-        db.child("Order Details").child(orderId).child("orderAccepted")
-            .setValue(false)
 
 
         val boyRef = db.child("DeliveryBoys").child(userId)
@@ -178,69 +179,27 @@ earnings += price
 
     override fun onDelivered(orderId: String, position: Int) {
 
-        val db = FirebaseDatabase.getInstance().reference
-        val userId = FirebaseAuth.getInstance().currentUser!!.uid
-
-        val order = list[position]
-
-        // 1. MAIN ORDER UPDATE
-        db.child("Orders").child(orderId).updateChildren(
-            mapOf(
-                "status" to "Delivered",
-                "paymentReceived" to true
-            )
-        )
-
-        // 2. COMPLETED ORDER (ADMIN SOURCE)
-        db.child("CompletedOrder").child(orderId).setValue(order)
-
-        db.child("CompletedOrder").child(orderId).updateChildren(
-            mapOf(
-                "status" to "Delivered",
-                "paymentReceived" to true
-            )
-        )
-
-        // 3. DELIVERY BOY RESET (IMPORTANT FIX)
-        val boyRef = db.child("DeliveryBoys").child(userId)
-
-        boyRef.updateChildren(
-            mapOf(
-                "assignedOrders" to 0,
-                "activeDrops" to 0,
-                "isAvailable" to true
-            )
-        )
-
-        boyRef.child("deliveredOrders")
-            .setValue(ServerValue.increment(1))
-
-        // 4. EARNINGS
-        val price = order.totalPrice
-            ?.replace("₹", "")
-            ?.replace(",", "")
-            ?.trim()
-            ?.toIntOrNull() ?: 0
-
-        if (price > 0) {
-            boyRef.child("earnings")
-                .setValue(ServerValue.increment(price.toLong()))
-        }
-
-        // 5. UI update
-        list.removeAt(position)
-        adapter.notifyItemRemoved(position)
-
-        Toast.makeText(this, "Delivered ✅", Toast.LENGTH_SHORT).show()
+        // 🔥 Payment screen open hoga
+        val intent = Intent(this, CodPaymentActivity::class.java)
+        intent.putExtra("orderId", orderId)
+        startActivity(intent)
     }
 
     override fun onReject(orderId: String, position: Int) {
         showRejectDialog(orderId, position)
     }
+
     override fun onAccept(orderId: String, position: Int) {
 
         val db = FirebaseDatabase.getInstance().reference
+        val userId = FirebaseAuth.getInstance().currentUser!!.uid
 
+        db.child("DeliveryBoys").child(userId).updateChildren(
+            mapOf(
+                "isAvailable" to false,
+                "currentOrder" to orderId
+            )
+        )
         val updates = hashMapOf<String, Any>(
             "status" to "Accepted"
         )
@@ -258,6 +217,47 @@ earnings += price
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to accept ❌", Toast.LENGTH_SHORT).show()
             }
+        updateOrderEverywhere(orderId, "Accepted")
     }
+    private fun updateOrderEverywhere(orderId: String, status: String) {
 
+        val ref = FirebaseDatabase.getInstance().reference
+
+        // 1. Orders update
+        ref.child("Orders")
+            .child(orderId)
+            .child("status")
+            .setValue(status)
+
+        // 2. Get userId
+        ref.child("Orders")
+            .child(orderId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+
+                val userId = snapshot.child("userUid").getValue(String::class.java)
+
+                if (!userId.isNullOrEmpty()) {
+
+                    // 3. User BuyHistory update
+                    ref.child("user")
+                        .child(userId)
+                        .child("BuyHistory")
+                        .child(orderId)
+                        .child("status")
+                        .setValue(status)
+                }
+            }
+    }
+    override fun onStatusChange(orderId: String, status: String, position: Int) {
+
+        updateOrderEverywhere(orderId, status)  // 🔥 MAIN FIX
+
+        list[position].status = status
+        adapter.notifyItemChanged(position)
+    }
+    override fun onResume() {
+        super.onResume()
+        loadOrders()   // 🔥 refresh after payment
+    }
 }

@@ -112,17 +112,18 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 android:orientation="horizontal"
-                android:weightSum="3">
+                android:weightSum="4">
 
                 <TextView
                     android:id="@+id/btnPicked"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_weight="1"
                     android:background="@drawable/delivery_status_chip"
                     android:gravity="center"
                     android:padding="10dp"
+                    android:layout_marginStart="4dp"
                     android:text="Picked Up"
                     android:textColor="@color/green"/>
 
@@ -136,7 +137,20 @@
                     android:background="@drawable/delivery_status_chip"
                     android:gravity="center"
                     android:padding="10dp"
-                    android:text="On The Way"
+                    android:text="On Way"
+                    android:textColor="@color/green"/>
+
+                <TextView
+                    android:id="@+id/btnArrived"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:layout_marginEnd="3dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/delivery_status_chip"
+                    android:gravity="center"
+                    android:padding="10dp"
+                    android:text="Arrived"
                     android:textColor="@color/green"/>
 
                 <TextView

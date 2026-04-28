@@ -6,6 +6,8 @@ import android.os.CountDownTimer
 import android.util.Base64
 import android.util.Log
 import android.view.View
+import com.google.firebase.database.Transaction
+import com.google.firebase.database.MutableData
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -14,6 +16,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -44,12 +52,21 @@ class CodPaymentActivity : AppCompatActivity() {
     private val apiSecret = "yCAtO5rWa4nLX0iaFqix7VV3"
     
     private var countDownTimer: CountDownTimer? = null
-    private val paymentAmount = 540
+    private var orderId: String? = null
+    private lateinit var database: DatabaseReference
+    private var paymentAmount = 0
+    private lateinit var tvOrderInfo: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cod_payment)
-
+        database = FirebaseDatabase.getInstance().reference
+        orderId = intent.getStringExtra("orderId")
+        if (orderId.isNullOrEmpty()) {
+            Toast.makeText(this, "Order not found", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         // Initialize Views
         sectionCash = findViewById(R.id.sectionCash)
         sectionUPI = findViewById(R.id.sectionUPI)
@@ -62,6 +79,7 @@ class CodPaymentActivity : AppCompatActivity() {
         ivQRCode = findViewById(R.id.ivQRCode)
         tvTimer = findViewById(R.id.tvTimer)
         tvTotalAmount = findViewById(R.id.tvTotalAmount)
+        tvOrderInfo = findViewById(R.id.tvOrderInfo)
 
         // Mode Icons and Texts safely
         if (btnCash.childCount >= 2) {
@@ -99,6 +117,8 @@ class CodPaymentActivity : AppCompatActivity() {
         btnViewEarnings.setOnClickListener {
             startActivity(Intent(this, EarningsSummaryActivity::class.java))
         }
+        fetchOrderAmount()
+
     }
 
     private fun startTimer() {
@@ -125,15 +145,135 @@ class CodPaymentActivity : AppCompatActivity() {
     }
 
     private fun processSuccessfulPayment() {
-        stopTimer()
-        
-        // Update local earnings (simulated)
-        val sharedPref = getSharedPreferences("DeliveryAgentPrefs", MODE_PRIVATE)
-        val currentEarnings = sharedPref.getInt("earnings", 960) // 960 is the default from dashboard UI
-        val newEarnings = currentEarnings + paymentAmount
-        sharedPref.edit().putInt("earnings", newEarnings).apply()
 
-        Toast.makeText(this, "Transaction Successful! Rs $paymentAmount added to earnings.", Toast.LENGTH_LONG).show()
+        if (orderId == null) return
+
+        val deliveryBoyId = FirebaseAuth.getInstance().currentUser!!.uid
+
+        // ✅ Step 1: Update Orders + CompletedOrder (ONE TIME ONLY)
+        val updates = mapOf(
+            "paymentReceived" to true,
+            "status" to "Delivered"
+        )
+
+        database.child("Orders").child(orderId!!).updateChildren(updates)
+        database.child("CompletedOrder").child(orderId!!).updateChildren(updates)
+
+        // ✅ Step 2: Sync User BuyHistory (VERY IMPORTANT)
+        val orderRef = database.child("Orders").child(orderId!!)
+
+        orderRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+
+                val userIdFromOrder = snapshot.child("userUid").getValue(String::class.java)
+
+                if (!userIdFromOrder.isNullOrEmpty()) {
+
+                    val userUpdates = mapOf(
+                        "paymentReceived" to true,
+                        "status" to "Delivered"   // 🔥 ADD THIS
+                    )
+
+
+                    database.child("user")
+                        .child(userIdFromOrder)
+                        .child("BuyHistory")
+                        .child(orderId!!)
+                        .updateChildren(userUpdates)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        // ✅ Step 3: Delivery Boy Reset
+        val boyRef = database.child("DeliveryBoys").child(deliveryBoyId)
+
+        boyRef.updateChildren(
+            mapOf(
+                "isAvailable" to true,
+                "currentOrder" to ""   // 🔥 clear order after payment
+            )
+        )
+
+        // ✅ Step 4: Update Earnings
+        database.child("Orders").child(orderId!!)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+
+                    val amountStr = snapshot.child("totalPrice")
+                        .getValue(String::class.java) ?: "0"
+
+                    val amount = amountStr.replace("₹", "").toIntOrNull() ?: 0
+
+                    updateDeliveryBoyEarnings(deliveryBoyId, amount)
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
+
+        Toast.makeText(this, "Payment Successful!", Toast.LENGTH_SHORT).show()
+    }
+
+
+    private fun fetchOrderAmount() {
+
+        database.child("Orders").child(orderId!!)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+
+                    val amountStr = snapshot.child("totalPrice")
+                        .getValue(String::class.java) ?: "0"
+
+                    paymentAmount = amountStr.replace("₹", "").toIntOrNull() ?: 0
+
+                    tvTotalAmount.text = "Rs $paymentAmount"
+
+                    // 🔹 Order ID
+                    val orderIdText = snapshot.key ?: ""
+
+                    // 🔹 CUSTOMER NAME (IMPORTANT 🔥)
+                    val customerName = snapshot.child("userName")
+                        .getValue(String::class.java) ?: "Customer"
+
+                    // ✅ FINAL TEXT
+                    tvOrderInfo.text = "Order #$orderIdText | $customerName"
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+    private fun updateDeliveryBoyEarnings(userId: String, amount: Int) {
+
+        val ref = database.child("DeliveryBoys").child(userId)
+
+        ref.runTransaction(object : Transaction.Handler {
+
+            override fun doTransaction(currentData: MutableData): Transaction.Result {
+
+                val currentEarnings = currentData.child("earnings").getValue(Int::class.java) ?: 0
+                val delivered = currentData.child("deliveredOrders").getValue(Int::class.java) ?: 0
+                val active = currentData.child("activeDrops").getValue(Int::class.java) ?: 0
+
+                currentData.child("earnings").value = currentEarnings + amount
+                currentData.child("deliveredOrders").value = delivered + 1
+                currentData.child("activeDrops").value = if (active > 0) active - 1 else 0
+
+                return Transaction.success(currentData)
+            }
+
+            override fun onComplete(
+                error: DatabaseError?,
+                committed: Boolean,
+                currentData: DataSnapshot?
+            ) {
+                if (committed) {
+                    Toast.makeText(this@CodPaymentActivity, "Earnings Updated!", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
     }
 
     private fun selectPaymentMode(isCash: Boolean) {

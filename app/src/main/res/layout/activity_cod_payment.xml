@@ -64,11 +64,12 @@
                     android:textSize="20sp" />
 
                 <TextView
+                    android:id="@+id/tvOrderInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:fontFamily="@font/lato_regular"
-                    android:text="Order #4582 | Aditi Paul"
+                    android:text="Order Info"
                     android:textColor="@color/black" />
 
                 <TextView

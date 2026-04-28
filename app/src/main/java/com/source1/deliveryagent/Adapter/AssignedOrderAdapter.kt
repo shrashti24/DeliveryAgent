@@ -14,6 +14,7 @@ class AssignedOrderAdapter(
 
 ) : RecyclerView.Adapter<AssignedOrderAdapter.ViewHolder>() {
 
+
     class ViewHolder(val binding: ItemAssignedOrderBinding) :
         RecyclerView.ViewHolder(binding.root)
 
@@ -37,25 +38,26 @@ class AssignedOrderAdapter(
         val orderId = order.itemPushKey ?: return
 
         holder.binding.btnAccept.setOnClickListener {
-            updateStatus(orderId, "assigned")
+            listener.onAccept(order.itemPushKey!!, position)
         }
 
         holder.binding.btnPicked.setOnClickListener {
-            updateStatus(orderId, "Picked Up")
+            listener.onStatusChange(orderId, "Picked Up", position)
         }
 
         holder.binding.btnOnWay.setOnClickListener {
-            updateStatus(orderId, "On The Way")
+            listener.onStatusChange(orderId, "On The Way", position)
         }
        holder.binding.btnDelivered.setOnClickListener {
             listener.onDelivered(order.itemPushKey!!, position)
         }
+        holder.binding.btnArrived.setOnClickListener {
+            listener.onStatusChange(orderId, "Arrived", position)
+        }
         holder.binding.btnReject.setOnClickListener {
             listener.onReject(orderId, position)
         }
-        holder.binding.btnAccept.setOnClickListener {
-            listener.onAccept(order.itemPushKey!!, position)
-        }
+
 
 
     }
@@ -63,15 +65,36 @@ class AssignedOrderAdapter(
         fun onAccept(orderId: String, position: Int)
         fun onReject(orderId: String, position: Int)
         fun onDelivered(orderId: String, position: Int)
+        fun onStatusChange(orderId: String, status: String, position: Int)
     }
 
-    private fun updateStatus(orderId: String, status: String) {
 
-        val ref = FirebaseDatabase.getInstance().reference
-
-        ref.child("Orders")
-            .child(orderId)
-            .child("status")
-            .setValue(status)
+//    private fun updateStatus(orderId: String, status: String) {
+//
+//        val ref = FirebaseDatabase.getInstance().reference
+//
+//        // 1. Orders update
+//        ref.child("Orders")
+//            .child(orderId)
+//            .child("status")
+//            .setValue(status)
+//
+//        // 2. USER SIDE UPDATE 🔥🔥🔥
+//        ref.child("Orders").child(orderId)
+//            .child("userId")
+//            .get()
+//            .addOnSuccessListener { snapshot ->
+//
+//                val userId = snapshot.getValue(String::class.java)
+//
+//                if (!userId.isNullOrEmpty()) {
+//                    ref.child("user")
+//                        .child(userId)
+//                        .child("BuyHistory")
+//                        .child(orderId)
+//                        .child("status")
+//                        .setValue(status)
+//                }
+//            }
+//    }
     }
-}
