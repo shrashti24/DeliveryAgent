@@ -18,5 +18,6 @@ data class OrderModel(
     var foodNames: ArrayList<String>? = null,
     var foodImages: ArrayList<String>? = null,
     var foodPrices: ArrayList<String>? = null,
-    var foodQuantities: ArrayList<Int>? = null
+    var foodQuantities: ArrayList<Int>? = null,
+    var deliveryOTP: String? = null
 ) : Serializable

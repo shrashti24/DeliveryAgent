@@ -157,10 +157,29 @@ class CodPaymentActivity : AppCompatActivity() {
         )
 
         database.child("Orders").child(orderId!!).updateChildren(updates)
-        database.child("CompletedOrder").child(orderId!!).updateChildren(updates)
+
 
         // ✅ Step 2: Sync User BuyHistory (VERY IMPORTANT)
         val orderRef = database.child("Orders").child(orderId!!)
+
+        orderRef.get().addOnSuccessListener { snapshot ->
+
+            val orderMap = HashMap<String, Any>()
+
+            orderMap["orderId"] = orderId!!
+            orderMap["userName"] = snapshot.child("userName").value ?: ""
+            orderMap["address"] = snapshot.child("address").value ?: ""
+            orderMap["phoneNumber"] = snapshot.child("phoneNumber").value ?: ""
+            orderMap["totalPrice"] = snapshot.child("totalPrice").value ?: "0"
+            orderMap["userUid"] = snapshot.child("userUid").value ?: ""
+            orderMap["status"] = "Delivered"
+            orderMap["paymentReceived"] = true
+
+            // 🔥 NOW SAVE PROPERLY
+            database.child("CompletedOrder")
+                .child(orderId!!)
+                .setValue(orderMap)
+        }
 
         orderRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {

@@ -50,7 +50,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Login To Your Account"
+            android:text="Login Delivery Boy"
             android:textColor="#4CD964"
             android:textSize="18sp" />
 

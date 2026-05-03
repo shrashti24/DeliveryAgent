@@ -167,27 +167,21 @@ class MyProfileActivity : AppCompatActivity() {
             Toast.makeText(this, "All fields required", Toast.LENGTH_SHORT).show()
             return
         }
-
         val updates = hashMapOf<String, Any>(
             "phone" to phone,
             "vehicleNumber" to vehicle,
             "licenseId" to license,
             "zone" to zone
         )
-
         db.updateChildren(updates).addOnSuccessListener {
-
             Toast.makeText(this, "Profile Updated", Toast.LENGTH_SHORT).show()
-
             isEditing = false
             setEditMode(false)
             binding.btnEditProfile.setImageResource(R.drawable.edit_off)
         }
     }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == PICK_IMAGE && resultCode == RESULT_OK) {
             val uri = data?.data
             if (uri != null) {
@@ -233,7 +227,6 @@ class MyProfileActivity : AppCompatActivity() {
         Toast.makeText(this, "Uploading...", Toast.LENGTH_SHORT).show()
 
         client.newCall(request).enqueue(object : Callback {
-
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
                     Toast.makeText(this@MyProfileActivity,
@@ -256,13 +249,9 @@ class MyProfileActivity : AppCompatActivity() {
                 try {
                     val json = JSONObject(body)
                     val url = json.getString("secure_url")
-
                     runOnUiThread {
-
                         db.child(imageType).setValue(url)
-
                         when (imageType) {
-
                             "profileImage" -> {
                                 Glide.with(this@MyProfileActivity)
                                     .load(url)

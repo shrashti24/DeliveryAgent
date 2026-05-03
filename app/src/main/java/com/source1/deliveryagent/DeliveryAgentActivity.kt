@@ -33,6 +33,8 @@ class DeliveryAgentActivity : AppCompatActivity() {
         setupClicks()
     }
 
+
+
     // 🔥 USER DATA
     private fun loadUserData(userId: String) {
 
@@ -222,6 +224,28 @@ class DeliveryAgentActivity : AppCompatActivity() {
                     }
                 }
         }
+        binding.logOut.setOnClickListener {
+
+            // 🔥 Logout confirmation (optional but best)
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Logout")
+                .setMessage("Are you sure you want to logout?")
+                .setPositiveButton("Yes") { _, _ ->
+
+                    // 🔥 Firebase logout
+                    FirebaseAuth.getInstance().signOut()
+
+                    // 🔥 LoginActivity open + back clear
+                    val intent = Intent(this, DeliveryLoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+
+                    Toast.makeText(this, "Logged Out", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("No", null)
+                .show()
+        }
+
 
     }
 }
