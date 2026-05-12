@@ -1,22 +1,23 @@
 package com.source1.deliveryagent
 
-import android.os.Bundle
-import android.view.View
-import android.widget.Toast
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
+import android.util.Patterns
+import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
+import com.source1.deliveryagent.databinding.ActivityMyProfileBinding
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
-import com.google.firebase.storage.FirebaseStorage
-import com.bumptech.glide.Glide
-import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
-import com.google.firebase.database.DatabaseReference
-import com.source1.deliveryagent.databinding.ActivityMyProfileBinding
 
 class MyProfileActivity : AppCompatActivity() {
 
@@ -24,9 +25,10 @@ class MyProfileActivity : AppCompatActivity() {
     private lateinit var db: DatabaseReference
 
     private val uid = FirebaseAuth.getInstance().currentUser!!.uid
-    private val PICK_IMAGE = 100
+
     private var imageType = ""
     private var isEditing = false
+    private var isUploading = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,183 +39,421 @@ class MyProfileActivity : AppCompatActivity() {
         db = FirebaseDatabase.getInstance()
             .reference.child("DeliveryBoys").child(uid)
 
+        setupSpinners()
         loadProfile()
-
         setEditMode(false)
 
+        // ================= EDIT =================
         binding.btnEditProfile.setOnClickListener {
+
             isEditing = !isEditing
 
+            setEditMode(isEditing)
+
             if (isEditing) {
-                setEditMode(true)
-                binding.btnEditProfile.setImageResource(R.drawable.edit) // slash OFF
+                binding.btnEditProfile.setImageResource(R.drawable.edit)
+                Toast.makeText(this, "Edit Mode Enabled", Toast.LENGTH_SHORT).show()
             } else {
-                setEditMode(false)
-                binding.btnEditProfile.setImageResource(R.drawable.edit_off) // slash ON
+                binding.btnEditProfile.setImageResource(R.drawable.edit_off)
+                Toast.makeText(this, "Edit Mode Disabled", Toast.LENGTH_SHORT).show()
             }
         }
+
+        // ================= VIEW DOCUMENTS =================
+
+        binding.viewLicense.setOnClickListener {
+            openDocument("licenseUrl")
+        }
+
+        binding.viewRC.setOnClickListener {
+            openDocument("rcUrl")
+        }
+
+        binding.viewAadhar.setOnClickListener {
+            openDocument("aadharUrl")
+        }
+
+        // ================= IMAGE PICKERS =================
+
         binding.profileImage.setOnClickListener {
-            if (!isEditing) return@setOnClickListener
+
+            if (!isEditing) {
+                Toast.makeText(this, "Enable Edit Mode First", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             imageType = "profileImage"
             openGallery()
         }
+
         binding.uploadLicense.setOnClickListener {
-            if (!isEditing) return@setOnClickListener
+
+            if (!isEditing) {
+                Toast.makeText(this, "Enable Edit Mode First", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             imageType = "licenseUrl"
             openGallery()
         }
 
+        binding.uploadRC.setOnClickListener {
 
-        binding.uploaRC.setOnClickListener {
-            if (!isEditing) return@setOnClickListener
+            if (!isEditing) {
+                Toast.makeText(this, "Enable Edit Mode First", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             imageType = "rcUrl"
             openGallery()
         }
 
-        binding.uploaAadhar.setOnClickListener {
-            if (!isEditing) return@setOnClickListener
+        binding.uploadAadhar.setOnClickListener {
+
+            if (!isEditing) {
+                Toast.makeText(this, "Enable Edit Mode First", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             imageType = "aadharUrl"
             openGallery()
         }
+
+        // ================= SAVE =================
+
         binding.btnSave.setOnClickListener {
             saveProfile()
         }
+
+        // ================= BACK =================
 
         binding.backBtn.setOnClickListener {
             finish()
         }
     }
 
-    private fun openGallery() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+    // ================= SPINNER =================
 
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
+    private fun setupSpinners() {
 
-        intent.type = "image/*"   // ✅ ONLY IMAGES
-
-        intent.putExtra(
-            Intent.EXTRA_MIME_TYPES,
-            arrayOf(
-                "image/jpeg",
-                "image/png"
-            )
+        val vehicleTypes = arrayOf(
+            "Select Vehicle Type",
+            "Bike",
+            "Scooty"
         )
 
-        startActivityForResult(intent, PICK_IMAGE)
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            vehicleTypes
+        )
+
+        binding.spinnerVehicleType.adapter = adapter
     }
-    // 🔥 LOAD DATA FROM FIREBASE
+
+    // ================= OPEN DOCUMENT =================
+
+    private fun openDocument(child: String) {
+
+        db.child(child).get().addOnSuccessListener { snapshot ->
+
+            val url = snapshot.value?.toString()
+
+            if (!url.isNullOrEmpty()) {
+
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(Uri.parse(url), "image/*")
+                startActivity(intent)
+
+            } else {
+
+                Toast.makeText(this, "File Not Uploaded", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ================= LOAD PROFILE =================
+
     private fun loadProfile() {
 
-        db.addValueEventListener(object : ValueEventListener {
+        db.addListenerForSingleValueEvent(object : ValueEventListener {
+
             override fun onDataChange(snapshot: DataSnapshot) {
 
                 if (!snapshot.exists()) return
 
-                val profileImg = snapshot.child("profileImage").value?.toString()
+                val profileImg =
+                    snapshot.child("profileImage").value?.toString()
 
                 if (!profileImg.isNullOrEmpty()) {
 
-                    // 🔥 IMPORTANT: old avatar remove + new set
                     Glide.with(this@MyProfileActivity)
                         .load(profileImg)
-                        .placeholder(R.drawable.user)
-                        .error(R.drawable.user)
                         .circleCrop()
                         .into(binding.profileImage)
-                } else {
-                    binding.profileImage.setImageResource(R.drawable.ic_person)
                 }
 
                 binding.tvName.text =
                     snapshot.child("name").value?.toString() ?: "Delivery Boy"
 
-
-
-                binding.etZone.setText(
-                    snapshot.child("zone").value?.toString() ?: ""
-                )
-
                 binding.etPhone.setText(snapshot.child("phone").value?.toString() ?: "")
                 binding.etVehicle.setText(snapshot.child("vehicleNumber").value?.toString() ?: "")
                 binding.etLicense.setText(snapshot.child("licenseId").value?.toString() ?: "")
+                binding.etHouseNo.setText(snapshot.child("houseNo").value?.toString() ?: "")
+                binding.etStreet.setText(snapshot.child("street").value?.toString() ?: "")
+                binding.etPincode.setText(snapshot.child("pincode").value?.toString() ?: "")
+                binding.etState.setText(snapshot.child("state").value?.toString() ?: "")
+                binding.etCity.setText(snapshot.child("city").value?.toString() ?: "")
+
+                binding.licenseFileName.text =
+                    if (snapshot.child("licenseUrl").exists())
+                        "License Uploaded"
+                    else
+                        "No License Uploaded"
+
+                binding.rcFileName.text =
+                    if (snapshot.child("rcUrl").exists())
+                        "RC Uploaded"
+                    else
+                        "No RC Uploaded"
+
+                binding.aadharFileName.text =
+                    if (snapshot.child("aadharUrl").exists())
+                        "Aadhar Uploaded"
+                    else
+                        "No Aadhar Uploaded"
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+
+                Toast.makeText(
+                    this@MyProfileActivity,
+                    error.message,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         })
     }
 
-    // 🔥 ENABLE / DISABLE EDIT MODE
+    // ================= EDIT MODE =================
+
     private fun setEditMode(enable: Boolean) {
+
         binding.etPhone.isEnabled = enable
         binding.etVehicle.isEnabled = enable
         binding.etLicense.isEnabled = enable
-        binding.etZone.isEnabled = enable
+        binding.etHouseNo.isEnabled = enable
+        binding.etStreet.isEnabled = enable
+        binding.etPincode.isEnabled = enable
+        binding.etState.isEnabled = enable
+        binding.etCity.isEnabled = enable
+        binding.spinnerVehicleType.isEnabled = enable
+
         binding.uploadLicense.isEnabled = enable
-        binding.uploaRC.isEnabled = enable
-        binding.uploaAadhar.isEnabled = enable
+        binding.uploadRC.isEnabled = enable
+        binding.uploadAadhar.isEnabled = enable
         binding.profileImage.isEnabled = enable
 
-        binding.btnSave.visibility = if (enable) View.VISIBLE else View.GONE
+        binding.btnSave.visibility =
+            if (enable) View.VISIBLE else View.GONE
     }
 
-    // 🔥 SAVE DATA TO FIREBASE
+    // ================= SAVE PROFILE =================
+
     private fun saveProfile() {
 
-        val phone = binding.etPhone.text.toString()
-        val vehicle = binding.etVehicle.text.toString()
-        val license = binding.etLicense.text.toString()
-        val zone = binding.etZone.text.toString()
-        if (phone.isEmpty() || vehicle.isEmpty() || license.isEmpty()) {
-            Toast.makeText(this, "All fields required", Toast.LENGTH_SHORT).show()
+        val phone = binding.etPhone.text.toString().trim()
+
+        val vehicle =
+            binding.etVehicle.text.toString().trim().uppercase()
+
+        val license = binding.etLicense.text.toString().trim()
+
+        val houseNo = binding.etHouseNo.text.toString().trim()
+        val street = binding.etStreet.text.toString().trim()
+        val pincode = binding.etPincode.text.toString().trim()
+        val state = binding.etState.text.toString().trim()
+        val city = binding.etCity.text.toString().trim()
+
+        val vehicleType =
+            binding.spinnerVehicleType.selectedItem.toString()
+
+        // ================= VALIDATION =================
+
+        if (!phone.matches(Regex("^[6-9][0-9]{9}$"))) {
+
+            binding.etPhone.error = "Enter Valid Phone Number"
             return
         }
-        val updates = hashMapOf<String, Any>(
-            "phone" to phone,
-            "vehicleNumber" to vehicle,
-            "licenseId" to license,
-            "zone" to zone
-        )
-        db.updateChildren(updates).addOnSuccessListener {
-            Toast.makeText(this, "Profile Updated", Toast.LENGTH_SHORT).show()
-            isEditing = false
-            setEditMode(false)
-            binding.btnEditProfile.setImageResource(R.drawable.edit_off)
+
+        if (!vehicle.matches(
+                Regex("^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$")
+            )
+        ) {
+
+            binding.etVehicle.error = "Enter Valid Vehicle Number"
+            return
+        }
+
+        if (license.length < 8) {
+
+            binding.etLicense.error = "Invalid License ID"
+            return
+        }
+
+        if (!pincode.matches(Regex("^[0-9]{6}$"))) {
+
+            binding.etPincode.error = "Invalid Pincode"
+            return
+        }
+
+        if (!city.matches(Regex("^[A-Za-z ]+$"))) {
+
+            binding.etCity.error = "Only alphabets allowed"
+            return
+        }
+
+        if (!state.matches(Regex("^[A-Za-z ]+$"))) {
+
+            binding.etState.error = "Only alphabets allowed"
+            return
+        }
+
+        if (vehicleType == "Select Vehicle Type") {
+
+            Toast.makeText(this, "Select Vehicle Type", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // ================= CHECK IMAGES =================
+
+        db.get().addOnSuccessListener { snapshot ->
+
+            val profileImg =
+                snapshot.child("profileImage").value?.toString()
+
+            val licenseUrl =
+                snapshot.child("licenseUrl").value?.toString()
+
+            val rcUrl =
+                snapshot.child("rcUrl").value?.toString()
+
+            val aadharUrl =
+                snapshot.child("aadharUrl").value?.toString()
+
+            if (
+                profileImg.isNullOrEmpty() ||
+                licenseUrl.isNullOrEmpty() ||
+                rcUrl.isNullOrEmpty() ||
+                aadharUrl.isNullOrEmpty()
+            ) {
+
+                Toast.makeText(
+                    this,
+                    "Upload all documents first",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@addOnSuccessListener
+            }
+
+            // ================= UPDATE =================
+
+            val updates = hashMapOf<String, Any>(
+
+                "phone" to phone,
+                "vehicleNumber" to vehicle,
+                "licenseId" to license,
+                "houseNo" to houseNo,
+                "street" to street,
+                "pincode" to pincode,
+                "state" to state,
+                "city" to city,
+                "vehicleType" to vehicleType
+            )
+
+            binding.btnSave.isEnabled = false
+
+            db.updateChildren(updates)
+
+                .addOnSuccessListener {
+
+                    binding.btnSave.isEnabled = true
+
+                    Toast.makeText(
+                        this,
+                        "Profile Updated Successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    isEditing = false
+                    setEditMode(false)
+
+                    binding.btnEditProfile
+                        .setImageResource(R.drawable.edit_off)
+                }
+
+                .addOnFailureListener {
+
+                    binding.btnSave.isEnabled = true
+
+                    Toast.makeText(
+                        this,
+                        it.message,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
         }
     }
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PICK_IMAGE && resultCode == RESULT_OK) {
-            val uri = data?.data
+
+    // ================= GALLERY =================
+
+    private val galleryLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri ->
+
             if (uri != null) {
+
                 contentResolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
+
                 uploadToCloudinary(uri)
             }
         }
+
+    private fun openGallery() {
+
+        galleryLauncher.launch("image/*")
     }
+
+    // ================= CLOUDINARY =================
 
     private fun uploadToCloudinary(uri: Uri) {
 
-        val user = FirebaseAuth.getInstance().currentUser ?: return
-
         val inputStream = contentResolver.openInputStream(uri)
+
         if (inputStream == null) {
-            Toast.makeText(this, "File not readable", Toast.LENGTH_SHORT).show()
+
+            Toast.makeText(this, "File Not Readable", Toast.LENGTH_SHORT).show()
             return
         }
 
         val bytes = inputStream.readBytes()
+
         inputStream.close()
 
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
+
             .addFormDataPart(
                 "file",
                 "file_${System.currentTimeMillis()}",
                 bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
             )
+
             .addFormDataPart("upload_preset", "delivery_upload")
             .build()
 
@@ -226,11 +466,21 @@ class MyProfileActivity : AppCompatActivity() {
 
         Toast.makeText(this, "Uploading...", Toast.LENGTH_SHORT).show()
 
+        isUploading = true
+
         client.newCall(request).enqueue(object : Callback {
+
             override fun onFailure(call: Call, e: IOException) {
+
                 runOnUiThread {
-                    Toast.makeText(this@MyProfileActivity,
-                        "Upload Failed: ${e.message}", Toast.LENGTH_LONG).show()
+
+                    isUploading = false
+
+                    Toast.makeText(
+                        this@MyProfileActivity,
+                        "Upload Failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
 
@@ -239,48 +489,74 @@ class MyProfileActivity : AppCompatActivity() {
                 val body = response.body?.string()
 
                 if (!response.isSuccessful || body.isNullOrEmpty()) {
+
                     runOnUiThread {
-                        Toast.makeText(this@MyProfileActivity,
-                            "Upload Failed: ${response.code}", Toast.LENGTH_LONG).show()
+
+                        isUploading = false
+
+                        Toast.makeText(
+                            this@MyProfileActivity,
+                            "Upload Failed",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
+
                     return
                 }
 
                 try {
+
                     val json = JSONObject(body)
+
                     val url = json.getString("secure_url")
+
                     runOnUiThread {
+
                         db.child(imageType).setValue(url)
+
+                        isUploading = false
+
                         when (imageType) {
+
                             "profileImage" -> {
+
                                 Glide.with(this@MyProfileActivity)
                                     .load(url)
+                                    .circleCrop()
                                     .into(binding.profileImage)
                             }
 
-                            "licenseId" -> Toast.makeText(this@MyProfileActivity,
-                                "License Uploaded", Toast.LENGTH_SHORT).show()
+                            "licenseUrl" ->
+                                binding.licenseFileName.text = "License Uploaded"
 
-                            "rcUrl" -> Toast.makeText(this@MyProfileActivity,
-                                "RC Uploaded", Toast.LENGTH_SHORT).show()
+                            "rcUrl" ->
+                                binding.rcFileName.text = "RC Uploaded"
 
-                            "aadharUrl" -> Toast.makeText(this@MyProfileActivity,
-                                "Aadhar Uploaded", Toast.LENGTH_SHORT).show()
+                            "aadharUrl" ->
+                                binding.aadharFileName.text = "Aadhar Uploaded"
                         }
 
-                        Toast.makeText(this@MyProfileActivity,
-                            "Upload Success", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@MyProfileActivity,
+                            "Upload Success",
+                            Toast.LENGTH_SHORT
+                        ).show()
 
                         imageType = ""
                     }
 
                 } catch (e: Exception) {
+
                     runOnUiThread {
-                        Toast.makeText(this@MyProfileActivity,
-                            "Parse Error: ${body}", Toast.LENGTH_LONG).show()
+
+                        Toast.makeText(
+                            this@MyProfileActivity,
+                            "Upload Error",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
-        })   // 👈 THIS CLOSES enqueue
+        })
     }
 }

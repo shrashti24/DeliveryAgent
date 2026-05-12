@@ -77,36 +77,42 @@
                     android:textColor="@color/black"
                     android:textSize="17sp" />
 
+
                 <TextView
+                    android:id="@+id/txtPickup"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:fontFamily="@font/lato_regular"
-                    android:text="Pickup: Desi Bite Kitchen"
+                    android:text="Pickup: "
                     android:textColor="#444444" />
 
+
                 <TextView
+                    android:id="@+id/txtDrop"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:fontFamily="@font/lato_regular"
-                    android:text="Drop: Hazratganj, Lucknow"
+                    android:text="Drop: "
                     android:textColor="#444444" />
 
                 <TextView
+                    android:id="@+id/txtDistance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:fontFamily="@font/lato_regular"
-                    android:text="Distance: 6.2 km"
+                    android:text="Distance:"
                     android:textColor="#444444" />
 
                 <TextView
+                    android:id="@+id/txtEstimatedTime"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:fontFamily="@font/lato_regular"
-                    android:text="Estimated time: 18 mins"
+                    android:text="Estimated time: "
                     android:textColor="#444444" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>

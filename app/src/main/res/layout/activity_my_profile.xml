@@ -18,6 +18,7 @@
         android:paddingBottom="24dp">
 
         <!-- HEADER -->
+        <!-- HEADER -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -32,13 +33,24 @@
                 android:src="@drawable/arrow_left" />
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="12dp"
                 android:fontFamily="@font/yeonsung_regular"
                 android:text="My Profile"
                 android:textColor="@color/black"
                 android:textSize="28sp" />
+
+            <ImageButton
+                android:id="@+id/btnEditProfile"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="10dp"
+                android:background="@android:color/transparent"
+                android:padding="2dp"
+                android:src="@drawable/edit_off"
+                android:tint="@color/green"/>
         </LinearLayout>
 
         <!-- PROFILE CARD -->
@@ -59,13 +71,11 @@
 
                 <ImageView
                     android:id="@+id/profileImage"
-                    android:layout_width="62dp"
-android:scaleType="centerCrop"
-                    android:layout_height="62dp"
-                    android:src="@drawable/user"
-                     />
+                    android:layout_width="70dp"
+                    android:layout_height="70dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/user" />
 
-                <!-- NAME -->
                 <TextView
                     android:id="@+id/tvName"
                     android:layout_width="wrap_content"
@@ -76,19 +86,70 @@ android:scaleType="centerCrop"
                     android:textColor="@color/black"
                     android:textSize="24sp" />
 
-                <!-- STATUS -->
+                <!-- ADDRESS SECTION -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Address Details"
+                    android:textColor="@color/black"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <!-- HOUSE NO -->
                 <EditText
-                    android:id="@+id/etZone"
+                    android:id="@+id/etHouseNo"
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:layout_marginTop="10dp"
                     android:background="@drawable/edittext_bg"
-                    android:hint="Enter Address"
+                    android:hint="House No."
                     android:padding="12dp" />
+
+                <!-- STREET -->
+                <EditText
+                    android:id="@+id/etStreet"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/edittext_bg"
+                    android:hint="Street / Area"
+                    android:padding="12dp" />
+                <!-- STATE (Manual Input) -->
+                <EditText
+                    android:id="@+id/etState"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/edittext_bg"
+                    android:hint="State"
+                    android:padding="12dp" />
+
+                <!-- CITY (Manual Input) -->
+                <EditText
+                    android:id="@+id/etCity"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/edittext_bg"
+                    android:hint="City"
+                    android:padding="12dp" />
+                <!-- PINCODE -->
+                <EditText
+                    android:id="@+id/etPincode"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/edittext_bg"
+                    android:hint="Pincode"
+                    android:inputType="number"
+                    android:maxLength="6"
+                    android:padding="12dp" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- INPUT CARD -->
+        <!-- DETAILS CARD -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -102,11 +163,12 @@ android:scaleType="centerCrop"
                 android:orientation="vertical"
                 android:padding="18dp">
 
+                <!-- TOP BAR -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <TextView
                         android:layout_width="0dp"
@@ -115,14 +177,8 @@ android:scaleType="centerCrop"
                         android:fontFamily="@font/lato_bold"
                         android:text="Profile Details"
                         android:textColor="@color/black"
-                        android:textSize="17sp"/>
+                        android:textSize="17sp" />
 
-                    <ImageButton
-                        android:id="@+id/btnEditProfile"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:background="@android:color/transparent"
-                        android:src="@drawable/edit_off" />
                 </LinearLayout>
 
                 <!-- PHONE -->
@@ -133,10 +189,19 @@ android:scaleType="centerCrop"
                     android:layout_marginTop="14dp"
                     android:background="@drawable/edittext_bg"
                     android:hint="Phone Number"
-                    android:padding="12dp"
-                    android:inputType="phone"/>
+                    android:inputType="phone"
+                    android:padding="12dp" />
 
-                <!-- VEHICLE -->
+                <!-- VEHICLE TYPE -->
+                <Spinner
+                    android:id="@+id/spinnerVehicleType"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/edittext_bg"
+                    android:padding="8dp" />
+
+                <!-- VEHICLE NUMBER -->
                 <EditText
                     android:id="@+id/etVehicle"
                     android:layout_width="match_parent"
@@ -144,7 +209,7 @@ android:scaleType="centerCrop"
                     android:layout_marginTop="10dp"
                     android:background="@drawable/edittext_bg"
                     android:hint="Vehicle Number"
-                    android:padding="12dp"/>
+                    android:padding="12dp" />
 
                 <!-- LICENSE -->
                 <EditText
@@ -154,61 +219,147 @@ android:scaleType="centerCrop"
                     android:layout_marginTop="10dp"
                     android:background="@drawable/edittext_bg"
                     android:hint="License ID"
-                    android:padding="12dp"/>
+                    android:padding="12dp" />
 
-                <!-- UPLOAD -->
-                <TextView
-                    android:id="@+id/uploadLicense"
+                <!-- ================= LICENSE ================= -->
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/delivery_status_chip"
-                    android:fontFamily="@font/lato_bold"
-                    android:gravity="center"
-                    android:padding="12dp"
-                    android:text="Upload License"
-                    android:textColor="@color/green" />
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/uploadLicense"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/greenbuttonshape"
+                        android:drawableStart="@drawable/upload"
+                        android:drawablePadding="8dp"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Upload License"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/viewLicense"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="12dp"
+                        android:src="@drawable/eye"
+                        android:tint="@color/green" />
+                </LinearLayout>
+
                 <TextView
-                    android:id="@+id/uploaRC"
+                    android:id="@+id/licenseFileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="No License Uploaded"
+                    android:textColor="@color/black"
+                    android:textSize="12sp" />
+
+                <!-- ================= RC ================= -->
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/delivery_status_chip"
-                    android:fontFamily="@font/lato_bold"
-                    android:gravity="center"
-                    android:padding="12dp"
-                    android:text="Upload RC"
-                    android:textColor="@color/green" />
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/uploadRC"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/greenbuttonshape"
+                        android:drawableStart="@drawable/upload"
+                        android:drawablePadding="8dp"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Upload RC"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/viewRC"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="12dp"
+                        android:src="@drawable/eye"
+                        android:tint="@color/green" />
+                </LinearLayout>
+
                 <TextView
-                    android:id="@+id/uploaAadhar"
+                    android:id="@+id/rcFileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="No RC Uploaded"
+                    android:textColor="@color/black"
+                    android:textSize="12sp" />
+
+                <!-- ================= AADHAR ================= -->
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/delivery_status_chip"
-                    android:fontFamily="@font/lato_bold"
-                    android:gravity="center"
-                    android:padding="12dp"
-                    android:text="Upload Aadhar Card"
-                    android:textColor="@color/green" />
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/uploadAadhar"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/greenbuttonshape"
+                        android:drawableStart="@drawable/upload"
+                        android:drawablePadding="8dp"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Upload Aadhar Card"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/viewAadhar"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="12dp"
+                        android:src="@drawable/eye"
+                        android:tint="@color/green" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/aadharFileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="No Aadhar Uploaded"
+                    android:textColor="@color/black"
+                    android:textSize="12sp" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- SAVE BUTTON (ADDED) -->
+        <!-- SAVE BUTTON -->
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="Save Profile"
+            android:layout_marginTop="16dp"
             android:backgroundTint="@color/green"
-            android:textColor="@color/white"/>
+            android:text="Save Profile"
+            android:textColor="@color/white" />
 
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="3dp"/>
     </LinearLayout>
+
 </ScrollView>

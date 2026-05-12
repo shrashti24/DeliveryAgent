@@ -30,32 +30,63 @@ class DeliveryLoginActivity : AppCompatActivity() {
             val email = binding.emaillogin.text.toString().trim()
             val password = binding.passwordlogin.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please enter email & password", Toast.LENGTH_SHORT).show()
+            // ✅ Empty Validation
+            if (email.isEmpty()) {
+                binding.emaillogin.error = "Enter Email"
+                binding.emaillogin.requestFocus()
                 return@setOnClickListener
             }
 
+            if (password.isEmpty()) {
+                binding.passwordlogin.error = "Enter Password"
+                binding.passwordlogin.requestFocus()
+                return@setOnClickListener
+            }
+
+            // ✅ Email Format Validation
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                binding.emaillogin.error = "Invalid Email"
+                binding.emaillogin.requestFocus()
+                return@setOnClickListener
+            }
+
+            // ✅ Password Length Validation
+            if (password.length < 7) {
+                binding.passwordlogin.error = "Password too short"
+                binding.passwordlogin.requestFocus()
+                return@setOnClickListener
+            }
+
+            // ✅ Firebase Login
             auth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
 
                     val userId = auth.currentUser!!.uid
 
-                    database.child("Users").child(userId).child("role")
+                    database.child("DeliveryBoys")
+                        .child(userId)
+                        .child("role")
                         .addListenerForSingleValueEvent(object : ValueEventListener {
+
                             override fun onDataChange(snapshot: DataSnapshot) {
 
                                 val role = snapshot.getValue(String::class.java)
 
-                                if (role == "deliveryBoy") {   // ⚠️ match your create code
+                                if (role == "deliveryBoy") {
+
                                     startActivity(
                                         Intent(
                                             this@DeliveryLoginActivity,
                                             DeliveryAgentActivity::class.java
                                         )
                                     )
+
                                     finish()
+
                                 } else {
+
                                     auth.signOut()
+
                                     Toast.makeText(
                                         this@DeliveryLoginActivity,
                                         "You are not a delivery boy!",
@@ -65,6 +96,7 @@ class DeliveryLoginActivity : AppCompatActivity() {
                             }
 
                             override fun onCancelled(error: DatabaseError) {
+
                                 Toast.makeText(
                                     this@DeliveryLoginActivity,
                                     "Database Error",
@@ -72,9 +104,10 @@ class DeliveryLoginActivity : AppCompatActivity() {
                                 ).show()
                             }
                         })
-
                 }
+
                 .addOnFailureListener {
+
                     Toast.makeText(
                         this,
                         "Login Failed: ${it.message}",
@@ -87,10 +120,13 @@ class DeliveryLoginActivity : AppCompatActivity() {
             val email = binding.emaillogin.text.toString().trim()
 
             if (email.isEmpty()) {
-                Toast.makeText(this, "Enter email first", Toast.LENGTH_SHORT).show()
+                binding.emaillogin.error = "Enter Email First"
                 return@setOnClickListener
             }
-
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                binding.emaillogin.error = "Invalid Email"
+                return@setOnClickListener
+            }
             FirebaseAuth.getInstance().sendPasswordResetEmail(email)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Reset link sent to email", Toast.LENGTH_SHORT).show()

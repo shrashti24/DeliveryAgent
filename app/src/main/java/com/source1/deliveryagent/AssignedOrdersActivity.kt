@@ -19,7 +19,7 @@ class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrder
     private lateinit var adapter: AssignedOrderAdapter
     private lateinit var db: DatabaseReference
     private lateinit var auth: FirebaseAuth
-
+    private var dashboardListener: ValueEventListener? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -45,52 +45,42 @@ class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrder
 
         val userId = FirebaseAuth.getInstance().currentUser!!.uid
 
-        FirebaseDatabase.getInstance().reference
+        val ref = FirebaseDatabase.getInstance().reference
             .child("Orders")
             .orderByChild("assignedTo")
             .equalTo(userId)
-            .addValueEventListener(object : ValueEventListener {
 
-                override fun onDataChange(snapshot: DataSnapshot) {
+        dashboardListener = object : ValueEventListener {
 
-                    var pending = 0
-                    var picked = 0
+            override fun onDataChange(snapshot: DataSnapshot) {
 
-                    var inTransit = 0
-                    var delivered = 0
+                var pending = 0
+                var picked = 0
+                var delivered = 0
 
+                for (snap in snapshot.children) {
 
+                    val order = snap.getValue(OrderModel::class.java) ?: continue
 
-                    for (snap in snapshot.children) {
+                    when (order.status) {
 
-                        val order = snap.getValue(OrderModel::class.java)
+                        "Accepted" -> pending++
 
-                        when (order?.status) {
+                        "Picked Up", "On The Way", "Arrived" -> picked++
 
-                            "Accepted" -> pending++
-
-                            "Picked Up" -> picked++
-
-                            "On The Way" -> inTransit++
-
-                            "Delivered" -> {
-                                delivered++
-
-
-                            }
-                        }
+                        "Delivered" -> delivered++
                     }
-
-                    // 🔥 UI update
-                    binding.pendingCount.text = pending.toString()
-                    binding.pickedCount.text = picked.toString()
-                    binding.deliveredCount.text = delivered.toString()
-
-
                 }
 
-                override fun onCancelled(error: DatabaseError) {}
-            })
+                binding.pendingCount.text = pending.toString()
+                binding.pickedCount.text = picked.toString()
+                binding.deliveredCount.text = delivered.toString()
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        }
+
+        ref.addValueEventListener(dashboardListener!!)
     }
 
     private fun loadOrders() {
@@ -147,34 +137,81 @@ class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrder
         val db = FirebaseDatabase.getInstance().reference
         val userId = FirebaseAuth.getInstance().currentUser!!.uid
 
+        // 🔥 Order reject update
         val updates = hashMapOf<String, Any>(
-            "status" to "pending",
-            "assignedTo" to ""
+
+            "status" to "Rejected",
+            "assignedTo" to "",
+            "rejectedBy" to userId,
+            "rejectedAt" to System.currentTimeMillis(),
+            "deliveryAccepted" to false
         )
 
-        db.child("Orders").child(orderId).updateChildren(updates)
+        db.child("Orders")
+            .child(orderId)
+            .updateChildren(updates)
 
-        // 🔥 SYNC
+            .addOnSuccessListener {
 
+                // ✅ Delivery boy available again
+                db.child("DeliveryBoys")
+                    .child(userId)
+                    .updateChildren(
+                        mapOf(
+                            "isAvailable" to true,
+                            "currentOrder" to ""
+                        )
+                    )
 
+                // ✅ Decrease counters
+                val boyRef =
+                    db.child("DeliveryBoys").child(userId)
 
-        val boyRef = db.child("DeliveryBoys").child(userId)
+                boyRef.child("assignedOrders")
+                    .get()
+                    .addOnSuccessListener {
 
-        // ✅ safe decrement
-        boyRef.child("assignedOrders").get().addOnSuccessListener {
-            val current = it.getValue(Int::class.java) ?: 0
-            boyRef.child("assignedOrders").setValue(if (current > 0) current - 1 else 0)
-        }
+                        val current =
+                            it.getValue(Int::class.java) ?: 0
 
-        boyRef.child("activeDrops").get().addOnSuccessListener {
-            val current = it.getValue(Int::class.java) ?: 0
-            boyRef.child("activeDrops").setValue(if (current > 0) current - 1 else 0)
-        }
+                        boyRef.child("assignedOrders")
+                            .setValue(
+                                if (current > 0) current - 1 else 0
+                            )
+                    }
 
-        list.removeAt(position)
-        adapter.notifyItemRemoved(position)
+                boyRef.child("activeDrops")
+                    .get()
+                    .addOnSuccessListener {
 
-        Toast.makeText(this, "Order Rejected ❌", Toast.LENGTH_SHORT).show()
+                        val current =
+                            it.getValue(Int::class.java) ?: 0
+
+                        boyRef.child("activeDrops")
+                            .setValue(
+                                if (current > 0) current - 1 else 0
+                            )
+                    }
+
+                // ✅ Remove from list
+                list.removeAt(position)
+                adapter.notifyItemRemoved(position)
+
+                Toast.makeText(
+                    this,
+                    "Order Rejected ❌",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            .addOnFailureListener {
+
+                Toast.makeText(
+                    this,
+                    "Reject Failed",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
     }
 
     override fun onDelivered(orderId: String, position: Int) {
@@ -201,7 +238,13 @@ class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrder
             )
         )
         val updates = hashMapOf<String, Any>(
-            "status" to "Accepted"
+            "status" to "Accepted",
+            // 🔥 clear old reject data
+            "rejectedBy" to "",
+            "rejectedAt" to "",
+
+            // 🔥 accepted by delivery boy
+            "deliveryAccepted" to true
         )
 
         db.child("Orders").child(orderId)
@@ -259,5 +302,19 @@ class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrder
     override fun onResume() {
         super.onResume()
         loadOrders()   // 🔥 refresh after payment
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        val ref = FirebaseDatabase.getInstance().reference
+            .child("Orders")
+            .orderByChild("assignedTo")
+            .equalTo(userId)
+
+        dashboardListener?.let {
+            ref.removeEventListener(it)
+        }
     }
 }
