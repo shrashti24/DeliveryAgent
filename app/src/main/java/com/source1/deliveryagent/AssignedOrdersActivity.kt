@@ -137,69 +137,63 @@ class AssignedOrdersActivity : AppCompatActivity(), AssignedOrderAdapter.OnOrder
         val db = FirebaseDatabase.getInstance().reference
         val userId = FirebaseAuth.getInstance().currentUser!!.uid
 
-        // 🔥 Order reject update
-        val updates = hashMapOf<String, Any>(
+        // 🔥 ORDER RESET
+        val orderUpdates = hashMapOf<String, Any>(
 
-            "status" to "Rejected",
+            "status" to "pending",
             "assignedTo" to "",
+            "deliveryAccepted" to false,
+
+            "deliveryBoyName" to "",
+
             "rejectedBy" to userId,
-            "rejectedAt" to System.currentTimeMillis(),
-            "deliveryAccepted" to false
+            "rejectedAt" to System.currentTimeMillis()
         )
 
         db.child("Orders")
             .child(orderId)
-            .updateChildren(updates)
+            .updateChildren(orderUpdates)
 
             .addOnSuccessListener {
 
-                // ✅ Delivery boy available again
+                // 🔥 DELIVERY BOY RESET
+                val deliveryBoyUpdates = hashMapOf<String, Any>(
+
+                    "isAvailable" to true,
+                    "currentOrder" to "",
+                    "activeDrops" to 0
+                )
+
                 db.child("DeliveryBoys")
                     .child(userId)
-                    .updateChildren(
-                        mapOf(
-                            "isAvailable" to true,
-                            "currentOrder" to ""
-                        )
-                    )
+                    .updateChildren(deliveryBoyUpdates)
 
-                // ✅ Decrease counters
-                val boyRef =
-                    db.child("DeliveryBoys").child(userId)
-
-                boyRef.child("assignedOrders")
+                // 🔥 assignedOrders decrease
+                db.child("DeliveryBoys")
+                    .child(userId)
+                    .child("assignedOrders")
                     .get()
-                    .addOnSuccessListener {
+                    .addOnSuccessListener { snap ->
 
                         val current =
-                            it.getValue(Int::class.java) ?: 0
+                            snap.getValue(Int::class.java) ?: 0
 
-                        boyRef.child("assignedOrders")
-                            .setValue(
-                                if (current > 0) current - 1 else 0
-                            )
+                        val updated =
+                            if (current > 0) current - 1 else 0
+
+                        db.child("DeliveryBoys")
+                            .child(userId)
+                            .child("assignedOrders")
+                            .setValue(updated)
                     }
 
-                boyRef.child("activeDrops")
-                    .get()
-                    .addOnSuccessListener {
-
-                        val current =
-                            it.getValue(Int::class.java) ?: 0
-
-                        boyRef.child("activeDrops")
-                            .setValue(
-                                if (current > 0) current - 1 else 0
-                            )
-                    }
-
-                // ✅ Remove from list
+                // remove list item
                 list.removeAt(position)
                 adapter.notifyItemRemoved(position)
 
                 Toast.makeText(
                     this,
-                    "Order Rejected ❌",
+                    "Order Rejected Successfully",
                     Toast.LENGTH_SHORT
                 ).show()
             }

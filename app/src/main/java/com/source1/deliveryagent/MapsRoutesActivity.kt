@@ -3,6 +3,7 @@ package com.source1.deliveryagent
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.widget.ImageButton
@@ -16,9 +17,9 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.database.*
-
 import com.source1.deliveryagent.model.OrderModel
 
 class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -26,15 +27,15 @@ class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private lateinit var database: DatabaseReference
 
-    private val LOCATION_PERMISSION_REQUEST_CODE = 1
-
-    private var restaurantLatLng: LatLng? = null
-    private var customerLatLng: LatLng? = null
-
     private lateinit var txtPickup: TextView
     private lateinit var txtDrop: TextView
     private lateinit var txtDistance: TextView
     private lateinit var txtEstimatedTime: TextView
+
+    private var restaurantLatLng: LatLng? = null
+    private var customerLatLng: LatLng? = null
+
+    private val LOCATION_PERMISSION_REQUEST_CODE = 101
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,98 +43,123 @@ class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
 
         database = FirebaseDatabase.getInstance().reference
 
-        // Views
         txtPickup = findViewById(R.id.txtPickup)
         txtDrop = findViewById(R.id.txtDrop)
         txtDistance = findViewById(R.id.txtDistance)
         txtEstimatedTime = findViewById(R.id.txtEstimatedTime)
 
-        // Back Button
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
             finish()
         }
 
-        // Open Google Maps
         findViewById<TextView>(R.id.btnOpenMaps).setOnClickListener {
             openGoogleMaps()
         }
 
-        // Share Location
         findViewById<TextView>(R.id.btnShareLiveLocation).setOnClickListener {
-            shareLiveLocation()
+            shareLocation()
         }
 
-        // Map Fragment
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map_route) as SupportMapFragment
 
         mapFragment.getMapAsync(this)
 
-        // Get Order ID
+        loadOrderData()
+    }
+
+    private fun loadOrderData() {
+
         val orderId = intent.getStringExtra("orderId")
 
-        if (orderId != null) {
+        if (orderId.isNullOrEmpty()) {
+            Toast.makeText(this, "Order ID missing", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-            database.child("Orders")
-                .child(orderId)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
+        database.child("Orders")
+            .child(orderId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
 
-                    override fun onDataChange(snapshot: DataSnapshot) {
+                override fun onDataChange(snapshot: DataSnapshot) {
 
-                        val order = snapshot.getValue(OrderModel::class.java)
+                    val order = snapshot.getValue(OrderModel::class.java)
 
-                        if (order != null) {
+                    if (order != null) {
 
-                            // Coordinates
-                            val rLat = order.restaurantLat ?: 0.0
-                            val rLng = order.restaurantLng ?: 0.0
+                        // Restaurant Location
+                        val rLat = order.restaurantLat ?: 0.0
+                        val rLng = order.restaurantLng ?: 0.0
 
-                            val cLat = order.customerLat ?: 0.0
-                            val cLng = order.customerLng ?: 0.0
+                        // Customer Location
+                        val cLat = order.customerLat ?: 0.0
+                        val cLng = order.customerLng ?: 0.0
 
-                            restaurantLatLng = LatLng(rLat, rLng)
-                            customerLatLng = LatLng(cLat, cLng)
+                        restaurantLatLng = LatLng(rLat, rLng)
+                        customerLatLng = LatLng(cLat, cLng)
 
-                            // Set UI Data
-                            txtPickup.text =
-                                "Pickup: ${order.restaurantName ?: "Restaurant"}"
+                        // Pickup
+                        txtPickup.text =
+                            "Pickup: ${order.restaurantName ?: "SpicyBite Restaurant"}"
 
-                            txtDrop.text =
-                                "Drop: ${order.address ?: "No Address"}"
+                        // Drop
+                        txtDrop.text =
+                            "Drop: ${order.address ?: "Customer Address"}"
 
-                            txtDistance.text =
-                                "Distance: ${order.distance ?: "Not Available"}"
+                        // Calculate Distance
+                        calculateDistanceAndTime()
 
-                            txtEstimatedTime.text =
-                                "Estimated time: ${order.estimatedTime ?: "Not Available"}"
-
-                            // Update Map
-                            if (::mMap.isInitialized) {
-                                updateMap()
-                            }
-
-                        } else {
-                            Toast.makeText(
-                                this@MapsRoutesActivity,
-                                "Order data not found",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        if (::mMap.isInitialized) {
+                            updateMap()
                         }
-                    }
 
-                    override fun onCancelled(error: DatabaseError) {
+                    } else {
 
                         Toast.makeText(
                             this@MapsRoutesActivity,
-                            error.message,
+                            "Order not found",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-                })
-        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+
+                    Toast.makeText(
+                        this@MapsRoutesActivity,
+                        error.message,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            })
     }
 
-    // MAP READY
+    private fun calculateDistanceAndTime() {
+
+        if (restaurantLatLng == null || customerLatLng == null) return
+
+        val result = FloatArray(1)
+
+        Location.distanceBetween(
+            restaurantLatLng!!.latitude,
+            restaurantLatLng!!.longitude,
+            customerLatLng!!.latitude,
+            customerLatLng!!.longitude,
+            result
+        )
+
+        val distanceInKm = result[0] / 1000
+
+        txtDistance.text =
+            "Distance: %.2f km".format(distanceInKm)
+
+        // Approximate ETA
+        val estimatedMinutes = (distanceInKm * 4).toInt()
+
+        txtEstimatedTime.text =
+            "Estimated time: $estimatedMinutes mins"
+    }
+
     override fun onMapReady(googleMap: GoogleMap) {
 
         mMap = googleMap
@@ -143,44 +169,51 @@ class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
         updateMap()
     }
 
-    // UPDATE MAP
     private fun updateMap() {
 
         mMap.clear()
 
-        // Restaurant Marker
-        restaurantLatLng?.let {
+        if (restaurantLatLng != null) {
 
             mMap.addMarker(
                 MarkerOptions()
-                    .position(it)
+                    .position(restaurantLatLng!!)
                     .title("Restaurant")
-            )
-
-            mMap.moveCamera(
-                CameraUpdateFactory.newLatLngZoom(it, 14f)
             )
         }
 
-        // Customer Marker
-        customerLatLng?.let {
+        if (customerLatLng != null) {
 
             mMap.addMarker(
                 MarkerOptions()
-                    .position(it)
+                    .position(customerLatLng!!)
                     .title("Customer")
+            )
+        }
+
+        // Show both markers in screen
+        if (restaurantLatLng != null && customerLatLng != null) {
+
+            val builder = LatLngBounds.Builder()
+
+            builder.include(restaurantLatLng!!)
+            builder.include(customerLatLng!!)
+
+            val bounds = builder.build()
+
+            mMap.animateCamera(
+                CameraUpdateFactory.newLatLngBounds(bounds, 150)
             )
         }
     }
 
-    // OPEN GOOGLE MAPS
     private fun openGoogleMaps() {
 
         if (customerLatLng == null) {
 
             Toast.makeText(
                 this,
-                "Customer location not available",
+                "Customer location unavailable",
                 Toast.LENGTH_SHORT
             ).show()
 
@@ -198,42 +231,22 @@ class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
         startActivity(intent)
     }
 
-    // SHARE LOCATION
-    private fun shareLiveLocation() {
+    private fun shareLocation() {
 
-        if (customerLatLng == null) {
+        if (customerLatLng == null) return
 
-            Toast.makeText(
-                this,
-                "Location not available",
-                Toast.LENGTH_SHORT
-            ).show()
+        val url =
+            "https://maps.google.com/?q=${customerLatLng!!.latitude},${customerLatLng!!.longitude}"
 
-            return
-        }
+        val intent = Intent(Intent.ACTION_SEND)
 
-        val uri =
-            "http://maps.google.com/maps?q=loc:${customerLatLng!!.latitude},${customerLatLng!!.longitude}"
+        intent.type = "text/plain"
 
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        intent.putExtra(Intent.EXTRA_TEXT, url)
 
-            type = "text/plain"
-
-            putExtra(
-                Intent.EXTRA_TEXT,
-                uri
-            )
-        }
-
-        startActivity(
-            Intent.createChooser(
-                shareIntent,
-                "Share via"
-            )
-        )
+        startActivity(Intent.createChooser(intent, "Share Location"))
     }
 
-    // ENABLE LOCATION
     private fun enableMyLocation() {
 
         if (
@@ -241,30 +254,20 @@ class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
-            ||
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
         ) {
 
             mMap.isMyLocationEnabled = true
 
-            return
-        }
+        } else {
 
-        // Request Permission
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ),
-            LOCATION_PERMISSION_REQUEST_CODE
-        )
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
     }
 
-    // PERMISSION RESULT
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -277,27 +280,13 @@ class MapsRoutesActivity : AppCompatActivity(), OnMapReadyCallback {
             grantResults
         )
 
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+        if (
+            requestCode == LOCATION_PERMISSION_REQUEST_CODE &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
 
-            if (
-                grantResults.isNotEmpty() &&
-                (
-                        grantResults[0] == PackageManager.PERMISSION_GRANTED
-                                ||
-                                grantResults[1] == PackageManager.PERMISSION_GRANTED
-                        )
-            ) {
-
-                enableMyLocation()
-
-            } else {
-
-                Toast.makeText(
-                    this,
-                    "Permission denied to access location",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            enableMyLocation()
         }
     }
 }
